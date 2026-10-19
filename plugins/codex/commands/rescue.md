@@ -1,6 +1,6 @@
 ---
 description: Delegate investigation, an explicit fix request, or follow-up rescue work to the Codex rescue subagent
-argument-hint: "[--background|--wait] [--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [what Codex should investigate, solve, or continue]"
+argument-hint: "[--background|--wait] [--resume|--fresh] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [what Codex should investigate, solve, or continue]"
 allowed-tools: Bash(node:*), AskUserQuestion, Agent
 ---
 
@@ -18,6 +18,7 @@ Execution mode:
 - If neither flag is present, default to foreground.
 - `--background` and `--wait` are execution flags for Claude Code. Do not forward them to `task`, and do not treat them as part of the natural-language task text.
 - `--model` and `--effort` are runtime-selection flags. Preserve them for the forwarded `task` call, but do not treat them as part of the natural-language task text.
+- Before dispatch, if the user explicitly pairs `gpt-6.1-sol` or `gpt-6-astra` with `none` or `minimal`, explain that the model does not support that effort and ask for one of `low`, `medium`, `high`, or `xhigh`. These are the efforts supported by both the target models and this plugin. Preserve configured defaults when flags are absent.
 - If the request includes `--resume`, do not ask whether to continue. The user already chose.
 - If the request includes `--fresh`, do not ask whether to continue. The user already chose.
 - Otherwise, before starting Codex, check for a resumable rescue thread from this Claude session by running:
@@ -43,7 +44,7 @@ Operating rules:
 - Do not paraphrase, summarize, rewrite, or add commentary before or after it.
 - Do not ask the subagent to inspect files, monitor progress, poll `/codex:status`, fetch `/codex:result`, call `/codex:cancel`, summarize output, or do follow-up work of its own.
 - Leave `--effort` unset unless the user explicitly asks for a specific reasoning effort.
-- Leave the model unset unless the user explicitly asks for one. If they ask for `spark`, map it to `gpt-5.3-codex-spark`.
+- Leave the model unset unless the user explicitly asks for one.
 - Leave `--resume` and `--fresh` in the forwarded request. The subagent handles that routing when it builds the `task` command.
 - If the helper reports that Codex is missing or unauthenticated, stop and tell the user to run `/codex:setup`.
 - If the user did not supply a request, ask what Codex should investigate or fix.
