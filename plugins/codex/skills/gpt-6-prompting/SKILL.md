@@ -6,7 +6,7 @@ user-invocable: false
 
 # GPT-6 Prompting
 
-Use this skill when `codex:codex-rescue` needs to shape a request for Codex. Draft only from the supplied context; the forwarding agent does not inspect the repository or solve the task.
+Use this skill when `codex:codex-delegate` needs to shape a request for Codex. Draft only from the supplied context; the forwarding agent does not inspect the repository or solve the task.
 
 This guidance applies to `gpt-6.1-sol` and `gpt-6-astra`. It follows [OpenAI's GPT-6 prompting guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices), checked on 2026-10-19. That guidance describes behavior observed with Astra and recommends evaluating it on the chosen model and workload; it does not establish identical behavior on Sol.
 
@@ -22,16 +22,16 @@ Use XML blocks as this plugin's prompt convention, not as a model requirement. P
 
 ## Model and effort controls
 
-- Leave model and effort unset unless the user chooses them; preserve the configured Codex defaults.
+- Keep model selection separate from prompt drafting. Preserve the caller's resolved Codex flags; `/codex:delegate` defines alias notation and precedence. User choices override the applicable skill, workflow, or agent configuration; only otherwise unspecified values fall back to `gpt-6.1-sol` and `medium`.
 - Pass explicit `gpt-6.1-sol` and `gpt-6-astra` model IDs through unchanged. Preserve other explicitly requested models as well.
 - Both target models require reasoning: `none` and `minimal` are not supported. If the user explicitly combines either target with an unsupported effort, the calling command should resolve that choice before dispatching the forwarding agent; preserve the requested values rather than silently substituting one.
 - The plugin currently accepts `low`, `medium`, `high`, and `xhigh` for these models. API support for additional effort levels does not imply this runtime accepts them. Keep runtime flags outside the prompt text.
 
 ## Choose the workflow
 
-- Use built-in `review` or `adversarial-review` commands when the job is reviewing local git changes. Those prompts already carry the review contract; the rescue forwarder itself only calls `task`.
+- Use built-in `review` or `adversarial-review` commands when the job is reviewing local git changes. Those prompts already carry the review contract; the delegation forwarder itself only calls `task`.
 - Use `task` when the task is diagnosis, planning, research, or implementation and you need to control the prompt directly.
 - Use `task --resume-last` for a continuation on the same Codex thread. Send the changed requirement or next step while preserving the original scope and completed work; a side question does not cancel an active task.
-- Keep the rescue wrapper to one runtime call. When the delegated Codex task permits subagents and tools are available, use them for independent work only when useful. Give each agent bounded scope, evidence, ownership, and a completion criterion; reconcile results before finishing.
+- Keep the delegation wrapper to one runtime call. When the delegated Codex task permits subagents and tools are available, use them for independent work only when useful. Give each agent bounded scope, evidence, ownership, and a completion criterion; reconcile results before finishing.
 
 Read [prompt blocks](references/prompt-blocks.md) when assembling a custom contract, [recipes](references/codex-prompt-recipes.md) for a task template, or [anti-patterns](references/codex-prompt-antipatterns.md) when diagnosing an underperforming prompt. Load only the reference needed.

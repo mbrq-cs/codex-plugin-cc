@@ -11,7 +11,7 @@ they already have.
 
 - `/codex:review` for a normal read-only Codex review
 - `/codex:adversarial-review` for a steerable challenge review
-- `/codex:rescue`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
+- `/codex:delegate`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
 
 ## Requirements
 
@@ -62,7 +62,7 @@ If Codex is installed but not logged in yet, run:
 After install, you should see:
 
 - the slash commands listed below
-- the `codex:codex-rescue` subagent in `/agents`
+- the `codex:codex-delegate` subagent in `/agents`
 
 One simple first run is:
 
@@ -123,30 +123,30 @@ Examples:
 
 This command is read-only. It does not fix code.
 
-### `/codex:rescue`
+### `/codex:delegate`
 
-Hands a task to Codex through the `codex:codex-rescue` subagent.
+Delegates a bounded task to Codex through the `codex:codex-delegate` subagent. Use it as an initial approach whenever a dedicated Codex run suits the work.
 
 Use it when you want Codex to:
 
-- investigate a bug
-- try a fix
+- implement a feature or scoped refactor
+- investigate behavior or fix a bug
+- research technical options or plan a change
 - continue a previous Codex task
-- take a faster or cheaper pass with a smaller model
 
 > [!NOTE]
 > Depending on the task and the model you choose these tasks might take a long time and it's generally recommended to force the task to be in the background or move the agent to the background.
 
-It supports `--background`, `--wait`, `--resume`, and `--fresh`. If you omit `--resume` and `--fresh`, the plugin can offer to continue the latest rescue thread for this repo.
+It supports `--background`, `--wait`, `--resume`, and `--fresh`. If you omit `--resume` and `--fresh`, the plugin can offer to continue the latest delegated thread for this repo.
 
 Examples:
 
 ```bash
-/codex:rescue investigate why the tests started failing
-/codex:rescue fix the failing test with the smallest safe patch
-/codex:rescue --resume apply the top fix from the last run
-/codex:rescue --model gpt-5.4-mini --effort medium investigate the flaky integration test
-/codex:rescue --background investigate the regression
+/codex:delegate implement pagination for the project list with relevant tests
+/codex:delegate fix the failing test with the smallest safe patch
+/codex:delegate --resume apply the top fix from the last run
+/codex:delegate --model gpt-5.4-mini --effort medium investigate the flaky integration test
+/codex:delegate --background astra / high investigate the regression
 ```
 
 You can also just ask for a task to be delegated to Codex:
@@ -157,8 +157,9 @@ Ask Codex to redesign the database connection to be more resilient.
 
 **Notes:**
 
-- if you do not pass `--model` or `--effort`, Codex chooses its own defaults.
-- follow-up rescue requests can continue the latest Codex task in the repo
+- Codex-specific `model / effort` notation selects the delegated run: `sol` = `gpt-6.1-sol`, `astra` = `gpt-6-astra`, `terra` = `gpt-5.6-terra`, and `luna` = `gpt-5.6-luna`. Explicitly versioned IDs pass through unchanged.
+- User-specified model and effort override the applicable skill, workflow, or agent configuration. Unspecified values fall back to `sol / medium`. This notation does not change the Claude forwarding agent's model.
+- follow-up delegation requests can continue the latest Codex task in the repo
 
 ### `/codex:transfer`
 
@@ -245,14 +246,14 @@ When the review gate is enabled, the plugin uses a `Stop` hook to run a targeted
 ### Hand A Problem To Codex
 
 ```bash
-/codex:rescue investigate why the build is failing in CI
+/codex:delegate investigate why the build is failing in CI
 ```
 
 ### Start Something Long-Running
 
 ```bash
 /codex:adversarial-review --background
-/codex:rescue --background investigate the flaky test
+/codex:delegate --background investigate the flaky test
 ```
 
 Then check in with:

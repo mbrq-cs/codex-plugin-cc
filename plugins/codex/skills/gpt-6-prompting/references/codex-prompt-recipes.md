@@ -2,7 +2,7 @@
 
 Use these as starting templates for Codex task prompts or other Codex/GPT-6.1 Sol or GPT-6 Astra prompt construction.
 Copy the smallest recipe that fits the task, then trim anything you do not need.
-In `codex:codex-rescue`, use read-only mode for diagnosis, review, or research without requested edits. Use write mode for authorized implementation. Copy relevant blocks from [prompt blocks](prompt-blocks.md) when the task needs explicit scope, instruction precedence, or continuation rules.
+In `codex:codex-delegate`, use read-only mode for diagnosis, review, or research without requested edits. Use write mode for authorized implementation. Copy relevant blocks from [prompt blocks](prompt-blocks.md) when the task needs explicit scope, instruction precedence, or continuation rules.
 
 ## Diagnosis
 

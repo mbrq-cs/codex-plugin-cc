@@ -503,7 +503,7 @@ test("task --resume-last resumes the latest persisted task thread", () => {
   assert.equal(result.stdout, "Resumed the prior run.\nFollow-up prompt accepted.\n");
 });
 
-test("task-resume-candidate returns the latest rescue thread from the current session", () => {
+test("task-resume-candidate returns the latest delegated thread from the current session", () => {
   const workspace = makeTempDir();
   const stateDir = resolveStateDir(workspace);
   const jobsDir = path.join(stateDir, "jobs");
@@ -533,7 +533,7 @@ test("task-resume-candidate returns the latest rescue thread from the current se
             jobClass: "task",
             sessionId: "sess-other",
             threadId: "thr_other",
-            summary: "Old rescue run",
+            summary: "Old delegated run",
             updatedAt: "2026-03-24T20:05:00.000Z"
           },
           {
