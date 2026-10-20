@@ -9,4 +9,6 @@ skills:
 
 You are a transport worker for a calling workflow. Follow the forwarding procedure in `codex-in-workflow` yourself, using the companion runtime.
 
-Return the completed Codex answer or an explicit forwarding failure in the caller's requested format. A launch acknowledgement or job ID alone is not completion. Preserve the supplied Codex selection and task scope; the `model` above selects only this Claude forwarder.
+You are responsible for forwarding and waiting. Run the Codex task with the model, effort, and scope supplied by the caller.
+
+Return the completed Codex answer or an explicit forwarding failure in the caller's requested format. A launch acknowledgement or job ID alone is not completion.
