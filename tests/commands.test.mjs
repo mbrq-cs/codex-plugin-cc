@@ -247,6 +247,8 @@ test("workflow skill addresses callers and the workflow agent owns the forwardin
   assert.match(agent, /--prompt-file/);
   assert.match(agent, /status <jobId> --wait --timeout-ms 50000 --json/);
   assert.match(agent, /storedJob\.result\.rawOutput/);
+  assert.match(agent, /Add `--ephemeral` unless the caller asks for a persistent thread/);
+  assert.match(skill, /ephemeral Codex threads unless you ask for a persistent one/);
   for (const format of failureFormats) {
     assert.ok(skill.includes(format), `skill documents ${format}`);
     assert.ok(agent.includes(format), `agent returns ${format}`);

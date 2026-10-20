@@ -9,7 +9,7 @@ A workflow that needs Codex's finished answer dispatches the `codex:codex-workfl
 
 ## Calling from a workflow
 
-Dispatch agent type `codex:codex-workflow` at the workflow's normal worker step, and await its final response before anything downstream consumes it. Pass the task, the resolved Codex model and effort, the working directory, and whether Codex may edit files.
+Dispatch agent type `codex:codex-workflow` at the workflow's normal worker step, and await its final response before anything downstream consumes it. Pass the task, the resolved Codex model and effort, the working directory, and whether Codex may edit files. Jobs run as ephemeral Codex threads unless you ask for a persistent one.
 
 For structured output, include the JSON schema the task should return. Add an optional string field `forwardError` to the agent's response schema, with a branch that accepts an object containing only that field, so a failure never has to invent task fields. Check `forwardError` before reading task data and route it through the workflow's existing failure handling. Because failures always arrive this way, an empty result means Codex really returned an empty result.
 
