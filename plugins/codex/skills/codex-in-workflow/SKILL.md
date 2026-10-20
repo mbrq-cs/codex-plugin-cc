@@ -5,26 +5,24 @@ description: Integrate Codex workers into a Claude workflow that needs completed
 
 # Codex in a workflow
 
-Use `codex:codex-workflow` as the forwarding agent when a workflow needs a completed Codex result. The ordinary `codex:codex-delegate` agent is a single-call, verbatim forwarder; its command's `--background` controls Claude's agent execution and does not join a Codex job.
+A workflow that needs Codex's finished answer dispatches the `codex:codex-workflow` agent. The agent launches a background Codex job, waits on it in bounded intervals so no single Bash call outlives its timeout, and returns the completed answer or an explicit failure.
 
 ## Calling from a workflow
 
-Select agent type `codex:codex-workflow` at the workflow's existing worker dispatch point. Supply the task, resolved Codex model and effort, working directory, and permitted read/write mode. The workflow must await this agent's final response before advancing its dependency barrier. The outer workflow may itself run in the background.
+Dispatch agent type `codex:codex-workflow` at the workflow's normal worker step, and await its final response before anything downstream consumes it. Pass the task, the resolved Codex model and effort, the working directory, and whether Codex may edit files.
 
-For structured output, give the forwarder the expected JSON schema and reserve an optional string field named `forwardError` in the workflow agent's response schema. Allow an error-only object through that schema (for example, a separate error branch), so failure does not require fabricated task fields. At the dispatch boundary, check `forwardError` before consuming task data and route it through the workflow's existing failure handling. An empty list is a successful task result only when Codex actually returned it after a completed run.
+For structured output, include the JSON schema the task should return. Add an optional string field `forwardError` to the agent's response schema, with a branch that accepts an object containing only that field, so a failure never has to invent task fields. Check `forwardError` before reading task data and route it through the workflow's existing failure handling. Because failures always arrive this way, an empty result means Codex really returned an empty result.
 
-The current `task --json` option serializes the runtime envelope; it does not enforce a schema on Codex's answer. The forwarder asks Codex for JSON and checks the returned shape. Use the workflow's schema validator when available; do not claim runtime schema enforcement.
+Codex's answer is not schema-constrained: the companion's `--json` flag formats the runtime's own output, not Codex's reply. The agent asks Codex for JSON and checks its shape; if the workflow needs a hard guarantee, validate the response with the workflow's schema validator.
 
 ## Forwarding procedure
 
-These steps are for the `codex:codex-workflow` worker itself. Execute the companion directly; do not dispatch another forwarding agent.
+This section is for the `codex:codex-workflow` agent. Your job is transport: launch the job, wait for it, and return what Codex produced. Solving the task, reading the source, or repairing Codex's answer is outside that job.
 
-1. Write the task text to a uniquely named absolute temporary file using `Write`. Include the requested response schema and ask for a single JSON object when structured output is required. Keep task prose out of shell command text, including heredocs. If writing the file is unavailable or denied, return an explicit failure.
-2. Launch one companion job with the prompt file and `--background --json`. Record the returned `jobId`. Unlike `/codex:delegate --background`, this is the companion runtime's background mode. Use the supplied full model ID and effort; preserve the requested task scope and permissions. Add `--write` only for authorized edits. Independent workflow calls start fresh; add `--ephemeral` only when requested.
-3. Await that exact job with `status <jobId> --wait --timeout-ms 50000 --json`, using a Bash timeout longer than the requested wait. Repeat while `job.status` is `queued` or `running`. `waitTimedOut: true` means this wait interval expired, not that the task finished or failed. Keep the same job ID and working directory across calls.
-4. Once terminal, fetch `result <jobId> --json`. Accept a task answer only when `job.status` is `completed`, and read it from `storedJob.result.rawOutput`. For structured output, parse and check the requested shape before returning that object. For text output, return the raw answer unchanged.
-
-Example command shapes (substitute the actual paths, resolved selection, and returned job ID):
+1. Write the task to a uniquely named absolute temporary file with `Write`. For structured output, include the schema and ask for a single JSON object. The task text lives only in this file, never in a shell command, so quotes or `$(...)` in the task can't reach the shell.
+2. Launch with `task --prompt-file <file> --background --json`, passing the caller's model, effort, and working directory. Add `--write` only when the caller allows edits, and `--ephemeral` only when requested. Record the returned `jobId`.
+3. Wait with `status <jobId> --wait --timeout-ms 50000 --json`, giving the Bash call a timeout above 50 seconds. Repeat while `job.status` is `queued` or `running`; `waitTimedOut: true` only means the interval ended. Pass the same `--cwd` on every call, because jobs are stored per workspace.
+4. When the job is terminal, run `result <jobId> --json`. If `job.status` is `completed`, the answer is `storedJob.result.rawOutput`: return text unchanged, or parse the JSON, check it against the requested shape, and return the object.
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task --cwd "/absolute/worktree" --model gpt-6.1-sol --effort medium --prompt-file "/absolute/temp/task-unique.txt" --background --json
@@ -32,12 +30,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status "<jobId>" --cwd 
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" result "<jobId>" --cwd "/absolute/worktree" --json
 ```
 
-The Bash calls carry only controls and paths. Follow the host's normal permission handling; a denied call is a forwarding failure, not a reason to rewrite the prompt or bypass a hook.
+## Failures
 
-## Failure and interruption
+When any step fails, a tool call is denied, or the job ends `failed` or `cancelled`, return `{"forwardError":"<stage, diagnostic, job ID and status if known>"}` for structured calls, or `Codex workflow failed: <same details>` for text calls. Report a denied call as a failure rather than working around it.
 
-Return `{"forwardError":"<stage, diagnostic, and job ID if known>"}` for structured calls, or `Codex workflow failed: <same details>` for text calls, when launch, status retrieval, result retrieval, or output parsing fails, or the job is failed/cancelled. Include a known job's status so the caller can distinguish a running job from a terminal failure. Never substitute empty task data.
-
-If a wait call is interrupted or denied after launch, surface the job ID and whether it may still be running. Resume waiting on that job when authorized; launching a replacement could duplicate work. Honor the caller's deadline or cancellation instruction using `cancel <jobId> --cwd <same-directory> --json` when cancellation is requested, and report its outcome. Do not retry launches or malformed task answers automatically.
-
-This worker only transports the task and its result. It does not inspect source, solve the task, or repair Codex's answer.
+Don't relaunch the task or ask Codex again after a malformed answer: the original job may still be running, and a second launch would duplicate its work. If a wait is interrupted after launch, report the job ID and whether it may still be running, and resume waiting on that same job when the caller allows it. When the caller's deadline passes or it asks for cancellation, run `cancel <jobId> --cwd <same directory> --json` and report the outcome.
