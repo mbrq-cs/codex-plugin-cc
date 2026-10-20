@@ -503,7 +503,7 @@ test("task --resume-last resumes the latest persisted task thread", () => {
   assert.equal(result.stdout, "Resumed the prior run.\nFollow-up prompt accepted.\n");
 });
 
-test("task-resume-candidate returns the latest rescue thread from the current session", () => {
+test("task-resume-candidate returns the latest delegated thread from the current session", () => {
   const workspace = makeTempDir();
   const stateDir = resolveStateDir(workspace);
   const jobsDir = path.join(stateDir, "jobs");
@@ -533,7 +533,7 @@ test("task-resume-candidate returns the latest rescue thread from the current se
             jobClass: "task",
             sessionId: "sess-other",
             threadId: "thr_other",
-            summary: "Old rescue run",
+            summary: "Old delegated run",
             updatedAt: "2026-03-24T20:05:00.000Z"
           },
           {
@@ -773,14 +773,14 @@ test("task forwards model selection and reasoning effort to app-server turn/star
   run("git", ["add", "README.md"], { cwd: repo });
   run("git", ["commit", "-m", "init"], { cwd: repo });
 
-  const result = run("node", [SCRIPT, "task", "--model", "spark", "--effort", "low", "diagnose the failing test"], {
+  const result = run("node", [SCRIPT, "task", "--model", "gpt-6.1-sol", "--effort", "low", "diagnose the failing test"], {
     cwd: repo,
     env: buildEnv(binDir)
   });
 
   assert.equal(result.status, 0, result.stderr);
   const fakeState = JSON.parse(fs.readFileSync(statePath, "utf8"));
-  assert.equal(fakeState.lastTurnStart.model, "gpt-5.3-codex-spark");
+  assert.equal(fakeState.lastTurnStart.model, "gpt-6.1-sol");
   assert.equal(fakeState.lastTurnStart.effort, "low");
 });
 
@@ -2256,4 +2256,81 @@ test("setup and status honor --cwd when reading shared session runtime", () => {
   const payload = JSON.parse(setup.stdout);
   assert.equal(payload.sessionRuntime.mode, "shared");
   assert.equal(payload.sessionRuntime.endpoint, "unix:/tmp/fake-broker.sock");
+});
+
+for (const [flag, background] of ["--ephemeral", "--oneshot"].flatMap((flag) => [false, true].map((background) => [flag, background]))) {
+  test(`task ${flag} ${background ? "background" : "foreground"} keeps results without creating a resumable conversation`, () => {
+    const repo = makeTempDir();
+    const binDir = makeTempDir();
+    installFakeCodex(binDir);
+    initGitRepo(repo);
+    const env = { ...buildEnv(binDir), CODEX_COMPANION_SESSION_ID: "ephemeral-test" };
+    const result = run("node", [SCRIPT, "task", flag, "--fresh", ...(background ? ["--background"] : []), "--json", "analyze this module"], { cwd: repo, env });
+    assert.equal(result.status, 0, result.stderr);
+    const stateDir = resolveStateDir(repo);
+    const jobId = JSON.parse(fs.readFileSync(path.join(stateDir, "state.json"), "utf8")).jobs[0].id;
+    if (background) {
+      const waited = run("node", [SCRIPT, "status", jobId, "--wait", "--timeout-ms", "15000", "--json"], { cwd: repo, env });
+      assert.equal(waited.status, 0, waited.stderr);
+      assert.equal(JSON.parse(waited.stdout).job.status, "completed");
+    }
+    const fakeState = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+    assert.equal(fakeState.threads.length, 1);
+    assert.equal(fakeState.threads[0].ephemeral, true);
+    assert.equal(fakeState.threads[0].name, null);
+    assert.equal(fakeState.lastTurnStart.prompt, "analyze this module");
+    const stored = JSON.parse(fs.readFileSync(path.join(stateDir, "jobs", `${jobId}.json`), "utf8"));
+    assert.equal(stored.ephemeral, true);
+    assert.ok(stored.threadId); // Retained for job diagnostics and active cancellation.
+    assert.match(fs.readFileSync(stored.logFile, "utf8"), /Final output/);
+    for (const command of ["result", "status"]) {
+      const output = run("node", [SCRIPT, command, jobId], { cwd: repo, env });
+      assert.equal(output.status, 0, output.stderr);
+      assert.doesNotMatch(output.stdout, /codex resume/);
+      if (command === "result") assert.match(output.stdout, /Handled the requested task/);
+    }
+    const candidate = run("node", [SCRIPT, "task-resume-candidate", "--json"], { cwd: repo, env });
+    assert.equal(candidate.status, 0, candidate.stderr);
+    assert.equal(JSON.parse(candidate.stdout).available, false);
+    const resume = run("node", [SCRIPT, "task", "--resume", "continue"], { cwd: repo, env });
+    assert.notEqual(resume.status, 0);
+    assert.match(resume.stderr, /No previous Codex task thread/);
+  });
+}
+
+test("ephemeral tasks do not replace the last persistent resume target", () => {
+  const repo = makeTempDir();
+  const binDir = makeTempDir();
+  installFakeCodex(binDir);
+  initGitRepo(repo);
+  const env = { ...buildEnv(binDir), CODEX_COMPANION_SESSION_ID: "mixed-tasks" };
+  const persistent = run("node", [SCRIPT, "task", "--json", "persistent task"], { cwd: repo, env });
+  assert.equal(persistent.status, 0, persistent.stderr);
+  const threadId = JSON.parse(persistent.stdout).threadId;
+  const ephemeral = run("node", [SCRIPT, "task", "--ephemeral", "temporary task"], { cwd: repo, env });
+  assert.equal(ephemeral.status, 0, ephemeral.stderr);
+  const candidate = run("node", [SCRIPT, "task-resume-candidate", "--json"], { cwd: repo, env });
+  assert.equal(candidate.status, 0, candidate.stderr);
+  assert.equal(JSON.parse(candidate.stdout).candidate.threadId, threadId);
+  const resumed = run("node", [SCRIPT, "task", "--resume-last", "--json", "continue persistent task"], { cwd: repo, env });
+  assert.equal(resumed.status, 0, resumed.stderr);
+  assert.equal(JSON.parse(resumed.stdout).threadId, threadId);
+  const fakeState = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+  assert.equal(fakeState.threads.find((thread) => thread.id === threadId).ephemeral, false);
+});
+
+test("ephemeral rejects either resume flag before launching foreground or background work", () => {
+  const repo = makeTempDir();
+  const binDir = makeTempDir();
+  installFakeCodex(binDir);
+  initGitRepo(repo);
+  for (const [flag, resume] of ["--ephemeral", "--oneshot"].flatMap((flag) => ["--resume", "--resume-last"].map((resume) => [flag, resume]))) {
+    for (const background of [[], ["--background"]]) {
+      const result = run("node", [SCRIPT, "task", flag, resume, ...background, "continue"], { cwd: repo, env: buildEnv(binDir) });
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /--ephemeral cannot be combined with --resume or --resume-last/);
+    }
+  }
+  assert.equal(fs.existsSync(path.join(resolveStateDir(repo), "state.json")), false);
+  assert.equal(fs.existsSync(path.join(binDir, "fake-codex-state.json")), false);
 });

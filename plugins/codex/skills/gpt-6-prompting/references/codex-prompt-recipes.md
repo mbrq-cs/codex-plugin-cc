@@ -1,8 +1,8 @@
 # Codex Prompt Recipes
 
-Use these as starting templates for Codex task prompts or other Codex/GPT-5.4 prompt construction.
+Use these as starting templates for Codex task prompts or other Codex/GPT-6.1 Sol or GPT-6 Astra prompt construction.
 Copy the smallest recipe that fits the task, then trim anything you do not need.
-In `codex:codex-rescue`, run diagnosis and fix-oriented recipes in write mode by default unless the user explicitly asked for read-only behavior.
+In `codex:codex-delegate`, use read-only mode for diagnosis, review, or research without requested edits. Use write mode for authorized implementation. Copy relevant blocks from [prompt blocks](prompt-blocks.md) when the task needs explicit scope, instruction precedence, or continuation rules.
 
 ## Diagnosis
 
@@ -21,7 +21,8 @@ Return a compact diagnosis with:
 
 <default_follow_through_policy>
 Keep going until you have enough evidence to identify the root cause confidently.
-Only stop to ask questions when a missing detail changes correctness materially.
+Retrieve missing evidence with tools where possible. Ask only when an unavailable detail materially changes the diagnosis, and continue independent investigation while blocked.
+Keep this diagnosis read-only unless the user also requests a fix.
 </default_follow_through_policy>
 
 <verification_loop>
@@ -51,7 +52,8 @@ Return:
 </structured_output_contract>
 
 <default_follow_through_policy>
-Default to the most reasonable low-risk interpretation and keep going.
+Make routine reversible choices within the authorized fix and keep going through implementation and verification.
+Ask only about consequential missing information or actions outside authorization; continue independent authorized work while blocked.
 </default_follow_through_policy>
 
 <completeness_contract>
@@ -60,7 +62,8 @@ Do not stop after identifying the issue without applying the fix.
 </completeness_contract>
 
 <verification_loop>
-Before finalizing, verify that the fix matches the task requirements and that the changed code is coherent.
+Run required checks and tests relevant to the changed behavior. Once they pass, repeat or broaden testing only for new changes, failures, or unresolved concerns.
+Report any verification that could not be completed.
 </verification_loop>
 
 <action_safety>
@@ -90,7 +93,8 @@ If a point is an inference, label it clearly.
 </grounding_rules>
 
 <dig_deeper_nudge>
-Check for second-order failures, empty-state handling, retries, stale state, and rollback paths before finalizing.
+Trace failure paths relevant to this change, including empty states, retries, stale state, and rollback where applicable.
+Return no findings if none is supported; keep the review read-only.
 </dig_deeper_nudge>
 
 <verification_loop>
@@ -128,7 +132,7 @@ Prefer primary sources.
 
 ```xml
 <task>
-Diagnose why this existing prompt is underperforming and propose the smallest high-leverage changes to improve it for Codex or GPT-5.4.
+Diagnose why this existing prompt is underperforming and propose the smallest high-leverage changes to improve it for Codex or GPT-6.1 Sol or GPT-6 Astra.
 </task>
 
 <structured_output_contract>

@@ -26,7 +26,8 @@ function filterJobsForCurrentSession(jobs, options = {}) {
 
 function getJobTypeLabel(job) {
   if (typeof job.kindLabel === "string" && job.kindLabel) {
-    return job.kindLabel;
+    // Older task records retain their stored label; normalize it only for display.
+    return job.kindLabel === "rescue" ? "delegate" : job.kindLabel;
   }
   if (job.kind === "adversarial-review") {
     return "adversarial-review";
@@ -35,13 +36,13 @@ function getJobTypeLabel(job) {
     return "review";
   }
   if (job.jobClass === "task") {
-    return "rescue";
+    return "delegate";
   }
   if (job.kind === "review") {
     return "review";
   }
   if (job.kind === "task") {
-    return "rescue";
+    return "delegate";
   }
   return "job";
 }

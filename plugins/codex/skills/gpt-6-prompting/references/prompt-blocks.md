@@ -1,6 +1,6 @@
 # Prompt Blocks
 
-Use these blocks selectively when composing Codex or GPT-5.4 prompts.
+Use these blocks selectively when composing Codex or GPT-6.1 Sol or GPT-6 Astra prompts.
 Wrap each block in the XML tag shown in its heading.
 
 ## Core Wrapper
@@ -35,8 +35,8 @@ Use when you want concise prose instead of a schema.
 
 ```xml
 <compact_output_contract>
-Keep the final answer compact and structured.
-Do not include long scene-setting or repeated recap.
+Lead with the outcome and why it matters, using concise, plain paragraphs.
+Use lists for parallel items or steps; include evidence and material limitations without a tool-by-tool recap.
 </compact_output_contract>
 ```
 
@@ -48,8 +48,9 @@ Use when Codex should act without asking routine questions.
 
 ```xml
 <default_follow_through_policy>
-Default to the most reasonable low-risk interpretation and keep going.
-Only stop to ask questions when a missing detail changes correctness, safety, or an irreversible action.
+Carry the authorized task through completion, making routine reversible choices within scope.
+Ask only when missing information materially changes the outcome or an action exceeds authorization. Continue independent authorized work while blocked.
+Prepare the concrete result before requesting any necessary approval. Preserve authorization already given.
 </default_follow_through_policy>
 ```
 
@@ -59,9 +60,9 @@ Use for debugging, implementation, or any multi-step task that should not stop e
 
 ```xml
 <completeness_contract>
-Resolve the task fully before stopping.
-Do not stop at the first plausible answer.
-Check whether there are follow-on fixes, edge cases, or cleanup needed for a correct result.
+Complete the requested outcome and required verification before stopping.
+For implementation, apply the fix rather than ending with a diagnosis or plan. For discussion, diagnosis, or review, return the requested analysis without expanding into edits.
+Include follow-on changes only when necessary for the authorized result.
 </completeness_contract>
 ```
 
@@ -72,7 +73,8 @@ Use when correctness matters.
 ```xml
 <verification_loop>
 Before finalizing, verify the result against the task requirements and the changed files or tool outputs.
-If a check fails, revise the answer instead of reporting the first draft.
+Run required checks and tests relevant to the changed behavior. If a check fails, address the failure or report the unresolved limitation.
+Once checks pass, broaden or repeat them only for new changes, failures, or unresolved concerns. Avoid tests that merely restate low-impact edits.
 </verification_loop>
 ```
 
@@ -122,7 +124,8 @@ Use for write-capable or potentially broad tasks.
 <action_safety>
 Keep changes tightly scoped to the stated task.
 Avoid unrelated refactors, renames, or cleanup unless they are required for correctness.
-Call out any risky or irreversible action before taking it.
+Obtain approval for actions outside existing authorization after preparing the reviewable result. Retain applicable tool permissions.
+Explicit user instructions take precedence over skill guidance, subject to higher-priority instructions. If a skill blocks progress, cite its exact file and instruction and explain the blocker.
 </action_safety>
 ```
 
@@ -156,7 +159,8 @@ Use for review and adversarial inspection.
 
 ```xml
 <dig_deeper_nudge>
-After you find the first plausible issue, check for second-order failures, empty-state behavior, retries, stale state, and rollback paths before you finalize.
+Trace relevant failure paths, including empty states, retries, stale state, and rollback where the change touches them.
+Finish when each candidate is supported or discarded and the scoped review is covered; return no findings when none meets the evidence bar.
 </dig_deeper_nudge>
 ```
 

@@ -1,6 +1,8 @@
 # Codex Prompt Anti-Patterns
 
-Avoid these when prompting Codex or GPT-5.4.
+Avoid these when prompting Codex or GPT-6.1 Sol or GPT-6 Astra.
+
+Treat these as prompt-authoring examples. A user asking for thoughts authorizes discussion, not automatic review or implementation. Clarify the task in the forwarded prompt without expanding its scope.
 
 ## Vague task framing
 
@@ -98,3 +100,15 @@ Ground every claim in the provided context or tool outputs.
 If a point is an inference, label it clearly.
 </grounding_rules>
 ```
+
+## Reconfirming authorized work
+
+A prompt that asks permission before every edit can stall an already authorized fix. State which actions are in scope, let Codex make routine reversible choices, and reserve questions for consequential gaps or actions beyond authorization. Prepare independent authorized work before requesting approval.
+
+## Unbounded verification
+
+A prompt that demands every possible test can keep a small task running after its acceptance criteria pass. Specify required checks and relevant behavior; repeat testing only after new changes, failures, or unresolved concerns.
+
+## Conflicting skill instructions
+
+Audit the prompt together with loaded skills. State that explicit user instructions take precedence over skill guidance, subject to higher-priority instructions and tool permissions. If a skill blocks progress, identify the exact file and instruction so the caller can resolve the conflict.
