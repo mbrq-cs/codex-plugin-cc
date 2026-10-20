@@ -12,6 +12,7 @@ they already have.
 - `/codex:review` for a normal read-only Codex review
 - `/codex:adversarial-review` for a steerable challenge review
 - `/codex:delegate`, `/codex:transfer`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work, hand off sessions, and manage background jobs
+- `codex:codex-in-workflow` for integrating Codex workers into workflows that consume completed results. It uses the `codex:codex-workflow` agent to launch and await the exact job across bounded waits, with explicit forwarding failures and prompt files written outside shell commands.
 
 ## Requirements
 

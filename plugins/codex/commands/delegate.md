@@ -6,7 +6,7 @@ allowed-tools: Bash(node:*), AskUserQuestion, Agent
 
 Invoke the `codex:codex-delegate` subagent via the `Agent` tool (`subagent_type: "codex:codex-delegate"`), forwarding the task with the Codex model and effort resolved below.
 `codex:codex-delegate` is a subagent, not a skill — do not call `Skill(codex:codex-delegate)` (no such skill) or `Skill(codex:delegate)` (that re-enters this command and hangs the session). The command runs inline so the `Agent` tool stays in scope; forked general-purpose subagents do not expose it.
-The final user-visible response must be Codex's output verbatim.
+The final user-visible response must be Codex's output verbatim. If forwarding fails, present the forwarder's explicit failure instead.
 
 Raw user request:
 $ARGUMENTS
@@ -59,6 +59,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task-resume-candidate -
 
 Operating rules:
 
+- The subagent prepares a prompt file with `Write`, keeping task prose out of shell command text.
 - The subagent is a thin forwarder only. It should use one `Bash` call to invoke `node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task ...` and return that command's stdout as-is.
 - Return the Codex companion stdout verbatim to the user.
 - Do not paraphrase, summarize, rewrite, or add commentary before or after it.
