@@ -1,6 +1,6 @@
 ---
 description: Delegate implementation, investigation, planning, research, or follow-up work to Codex
-argument-hint: "[--background|--wait] [--resume|--fresh] [model / effort] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [task Codex should complete or continue]"
+argument-hint: "[--background|--wait] [--resume|--fresh] [--ephemeral] [model / effort] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [task Codex should complete or continue]"
 allowed-tools: Bash(node:*), AskUserQuestion, Agent
 ---
 
@@ -36,9 +36,10 @@ Execution mode:
 - `--background` and `--wait` are execution flags for Claude Code. Do not forward them to `task`, and do not treat them as part of the natural-language task text.
 - `--model` and `--effort` are runtime-selection flags. Preserve them for the forwarded `task` call, but do not treat them as part of the natural-language task text.
 - Before dispatch, if the user explicitly pairs `gpt-6.1-sol` or `gpt-6-astra` with `none` or `minimal`, explain that the model does not support that effort and ask for one of `low`, `medium`, `high`, or `xhigh`. These are the efforts supported by both the target models and this plugin. Validate the resolved selection, including aliases and inherited values, before dispatch. If an effort is outside the plugin's accepted values, explain the limitation and ask for a supported value; do not silently downgrade it.
+- If the request includes `--ephemeral`, forward it to `task` as a runtime flag, remove it from task text, and start a fresh non-persistent Codex thread. Skip the resume-candidate lookup and question. Reject combining it with `--resume` or `--resume-last`; `--fresh` is compatible. Plugin job results and logs remain available, but the Codex conversation cannot be resumed later.
 - If the request includes `--resume`, do not ask whether to continue. The user already chose.
 - If the request includes `--fresh`, do not ask whether to continue. The user already chose.
-- Otherwise, before starting Codex, check for a resumable delegated thread from this Claude session by running:
+- Otherwise (without `--ephemeral`, `--resume`, or `--fresh`), before starting Codex, check for a resumable delegated thread from this Claude session by running:
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task-resume-candidate --json

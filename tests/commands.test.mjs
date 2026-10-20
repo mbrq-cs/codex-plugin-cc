@@ -106,6 +106,10 @@ test("delegate command absorbs continue semantics", () => {
   assert.match(delegate, /--model <model>/);
   assert.match(delegate, /--effort <none\|minimal\|low\|medium\|high\|xhigh>/);
   assert.match(delegate, /task-resume-candidate --json/);
+  assert.match(delegate, /\[--ephemeral\]/);
+  assert.match(delegate, /Skip the resume-candidate lookup and question/);
+  assert.match(agent, /never infer `--resume-last` for this request/);
+  assert.match(runtimeSkill, /`--ephemeral`, pass it to `task` as a flag/);
   for (const [alias, model] of Object.entries({ sol: "gpt-6.1-sol", astra: "gpt-6-astra", terra: "gpt-5.6-terra", luna: "gpt-5.6-luna" })) {
     assert.ok(delegate.includes("| `" + alias + "` | `" + model + "` |"));
   }

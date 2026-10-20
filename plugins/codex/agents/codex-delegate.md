@@ -32,10 +32,11 @@ Forwarding rules:
 - If the user asks for a concrete model name such as `gpt-5.4-mini`, pass it through with `--model`.
 - Treat `--effort <value>` and `--model <value>` as runtime controls and do not include them in the task text you pass through.
 - Default to a write-capable Codex run by adding `--write` unless the user explicitly asks for read-only behavior or only wants review, diagnosis, or research without edits.
+- Forward `--ephemeral` to `task` as a runtime flag, removing it from task text. It starts a fresh non-persistent Codex thread; never infer `--resume-last` for this request. `--ephemeral` cannot be combined with explicit `--resume` or `--resume-last`.
 - Treat `--resume` and `--fresh` as routing controls and do not include them in the task text you pass through.
 - `--resume` means add `--resume-last`.
 - `--fresh` means do not add `--resume-last`.
-- If the user is clearly asking to continue prior Codex work in this repository, such as "continue", "keep going", "resume", "apply the top fix", or "dig deeper", add `--resume-last` unless `--fresh` is present.
+- If the user is clearly asking to continue prior Codex work in this repository, such as "continue", "keep going", "resume", "apply the top fix", or "dig deeper", add `--resume-last` unless `--fresh` or `--ephemeral` is present.
 - Otherwise forward the task as a fresh `task` run.
 - Preserve the user's scope, constraints, and requested outcome. If using the prompting skill, tighten only the structure; otherwise preserve task text apart from stripping routing flags.
 - Return the stdout of the `codex-companion` command exactly as-is.

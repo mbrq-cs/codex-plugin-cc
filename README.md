@@ -137,11 +137,14 @@ Use it when you want Codex to:
 > [!NOTE]
 > Depending on the task and the model you choose these tasks might take a long time and it's generally recommended to force the task to be in the background or move the agent to the background.
 
-It supports `--background`, `--wait`, `--resume`, and `--fresh`. If you omit `--resume` and `--fresh`, the plugin can offer to continue the latest delegated thread for this repo.
+It supports `--background`, `--wait`, `--resume`, `--fresh`, and `--ephemeral`. If you omit `--resume`, `--fresh`, and `--ephemeral`, the plugin can offer to continue the latest delegated thread for this repo.
+
+Use `--ephemeral` for independent batch tasks that should not save Codex conversations or add saved chats to the sidebar. It skips the resume prompt and works with foreground or background execution. Plugin job results and logs remain available through `/codex:status` and `/codex:result`, but the Codex conversation cannot be resumed later. It can be combined with `--fresh`, but not `--resume` or `--resume-last`.
 
 Examples:
 
 ```bash
+/codex:delegate --ephemeral sol / medium analyze this module
 /codex:delegate implement pagination for the project list with relevant tests
 /codex:delegate fix the failing test with the smallest safe patch
 /codex:delegate --resume apply the top fix from the last run

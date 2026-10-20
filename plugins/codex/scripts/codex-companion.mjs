@@ -78,7 +78,7 @@ function printUsage() {
       "  node scripts/codex-companion.mjs setup [--enable-review-gate|--disable-review-gate] [--json]",
       "  node scripts/codex-companion.mjs review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>]",
       "  node scripts/codex-companion.mjs adversarial-review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>] [focus text]",
-      "  node scripts/codex-companion.mjs task [--background] [--write] [--resume-last|--resume|--fresh] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
+      "  node scripts/codex-companion.mjs task [--background] [--write] [--ephemeral] [--resume-last|--resume|--fresh] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
       "  node scripts/codex-companion.mjs transfer [--source <claude-jsonl>] [--json]",
       "  node scripts/codex-companion.mjs status [job-id] [--all] [--json]",
       "  node scripts/codex-companion.mjs result [job-id] [--json]",
@@ -307,6 +307,7 @@ function findLatestResumableTaskJob(jobs) {
     jobs.find(
       (job) =>
         job.jobClass === "task" &&
+        !job.ephemeral &&
         job.threadId &&
         job.status !== "queued" &&
         job.status !== "running"
@@ -337,7 +338,7 @@ async function resolveLatestTrackedTaskThread(cwd, options = {}) {
   const sessionId = getCurrentClaudeSessionId();
   const jobs = sortJobsNewestFirst(listJobs(workspaceRoot)).filter((job) => job.id !== options.excludeJobId);
   const visibleJobs = filterJobsForCurrentClaudeSession(jobs);
-  const activeTask = visibleJobs.find((job) => job.jobClass === "task" && (job.status === "queued" || job.status === "running"));
+  const activeTask = visibleJobs.find((job) => job.jobClass === "task" && !job.ephemeral && (job.status === "queued" || job.status === "running"));
   if (activeTask) {
     throw new Error(`Task ${activeTask.id} is still running. Use /codex:status before continuing it.`);
   }
@@ -489,8 +490,8 @@ async function executeTaskRun(request) {
     effort: request.effort,
     sandbox: request.write ? "workspace-write" : "read-only",
     onProgress: request.onProgress,
-    persistThread: true,
-    threadName: resumeThreadId ? null : buildPersistentTaskThreadName(request.prompt || DEFAULT_CONTINUE_PROMPT)
+    persistThread: !request.ephemeral,
+    threadName: resumeThreadId || request.ephemeral ? null : buildPersistentTaskThreadName(request.prompt || DEFAULT_CONTINUE_PROMPT)
   });
 
   const rawOutput = typeof result.finalMessage === "string" ? result.finalMessage : "";
@@ -588,19 +589,22 @@ function createTrackedProgress(job, options = {}) {
   };
 }
 
-function buildTaskJob(workspaceRoot, taskMetadata, write) {
-  return createCompanionJob({
-    prefix: "task",
-    kind: "task",
-    title: taskMetadata.title,
-    workspaceRoot,
-    jobClass: "task",
-    summary: taskMetadata.summary,
-    write
-  });
+function buildTaskJob(workspaceRoot, taskMetadata, write, ephemeral = false) {
+  return {
+    ...createCompanionJob({
+      prefix: "task",
+      kind: "task",
+      title: taskMetadata.title,
+      workspaceRoot,
+      jobClass: "task",
+      summary: taskMetadata.summary,
+      write
+    }),
+    ephemeral
+  };
 }
 
-function buildTaskRequest({ cwd, model, effort, prompt, write, resumeLast, jobId }) {
+function buildTaskRequest({ cwd, model, effort, prompt, write, resumeLast, ephemeral, jobId }) {
   return {
     cwd,
     model,
@@ -608,6 +612,7 @@ function buildTaskRequest({ cwd, model, effort, prompt, write, resumeLast, jobId
     prompt,
     write,
     resumeLast,
+    ephemeral,
     jobId
   };
 }
@@ -761,7 +766,7 @@ async function handleReview(argv) {
 async function handleTask(argv) {
   const { options, positionals } = parseCommandInput(argv, {
     valueOptions: ["model", "effort", "cwd", "prompt-file"],
-    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background"],
+    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background", "ephemeral"],
     aliasMap: {
       m: "model"
     }
@@ -775,6 +780,10 @@ async function handleTask(argv) {
 
   const resumeLast = Boolean(options["resume-last"] || options.resume);
   const fresh = Boolean(options.fresh);
+  const ephemeral = Boolean(options.ephemeral);
+  if (ephemeral && resumeLast) {
+    throw new Error("--ephemeral cannot be combined with --resume or --resume-last.");
+  }
   if (resumeLast && fresh) {
     throw new Error("Choose either --resume/--resume-last or --fresh.");
   }
@@ -788,7 +797,7 @@ async function handleTask(argv) {
     ensureCodexAvailable(cwd);
     requireTaskRequest(prompt, resumeLast);
 
-    const job = buildTaskJob(workspaceRoot, taskMetadata, write);
+    const job = buildTaskJob(workspaceRoot, taskMetadata, write, ephemeral);
     const request = buildTaskRequest({
       cwd,
       model,
@@ -796,6 +805,7 @@ async function handleTask(argv) {
       prompt,
       write,
       resumeLast,
+      ephemeral,
       jobId: job.id
     });
     const { payload } = enqueueBackgroundTask(cwd, job, request);
@@ -803,7 +813,7 @@ async function handleTask(argv) {
     return;
   }
 
-  const job = buildTaskJob(workspaceRoot, taskMetadata, write);
+  const job = buildTaskJob(workspaceRoot, taskMetadata, write, ephemeral);
   await runForegroundCommand(
     job,
     (progress) =>
@@ -814,6 +824,7 @@ async function handleTask(argv) {
         prompt,
         write,
         resumeLast,
+        ephemeral,
         jobId: job.id,
         onProgress: progress
       }),
