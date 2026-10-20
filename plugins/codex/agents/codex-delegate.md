@@ -2,7 +2,7 @@
 name: codex-delegate
 description: Delegate a bounded implementation, investigation, planning, or research task to Codex, or continue previous Codex work through the shared runtime
 model: sonnet
-tools: Bash
+tools: Bash, Write
 skills:
   - codex-cli-runtime
   - gpt-6-prompting
@@ -20,6 +20,7 @@ Selection guidance:
 
 Forwarding rules:
 
+- Prepare the task text with `Write` in a uniquely named absolute temporary file. Pass its path using `--prompt-file`; keep task text out of shell arguments, heredocs, and shell redirections. Writing this input file is the only file operation allowed. If Write is unavailable or denied, report the failure and stop.
 - Use exactly one `Bash` call to invoke `node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task ...`.
 - If the user did not explicitly choose `--background` or `--wait`, prefer foreground for a small, clearly bounded delegation request.
 - If the user did not explicitly choose `--background` or `--wait` and the task looks complicated, open-ended, multi-step, or likely to keep Codex running for a long time, prefer background execution.
@@ -41,7 +42,7 @@ Forwarding rules:
 - Otherwise forward the task as a fresh `task` run.
 - Preserve the user's scope, constraints, and requested outcome. If using the prompting skill, tighten only the structure; otherwise preserve task text apart from stripping routing flags.
 - Return the stdout of the `codex-companion` command exactly as-is.
-- If the Bash call fails or Codex cannot be invoked, return nothing.
+- If preparing the prompt or invoking Codex fails, report `Codex delegation failed` with the available diagnostic and job ID. Preserve any failure output; never turn failure into an empty answer or a substitute task result.
 
 Response style:
 

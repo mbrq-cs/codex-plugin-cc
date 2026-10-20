@@ -920,7 +920,7 @@ test("task using the shared broker still completes when Codex spawns subagents",
   assert.equal(result.stdout, "Handled the requested task.\nTask prompt accepted.\n");
 });
 
-test("task --background enqueues a detached worker and exposes per-job status", async () => {
+test("workflow prompt-file job survives a bounded wait and returns its exact stored answer", async () => {
   const repo = makeTempDir();
   const binDir = makeTempDir();
   installFakeCodex(binDir, "slow-task");
@@ -929,7 +929,10 @@ test("task --background enqueues a detached worker and exposes per-job status", 
   run("git", ["add", "README.md"], { cwd: repo });
   run("git", ["commit", "-m", "init"], { cwd: repo });
 
-  const launched = run("node", [SCRIPT, "task", "--background", "--json", "investigate the failing test"], {
+  const prompt = "Analyze security or safety. Literal shell text: $(touch SHOULD_NOT_EXIST) `pwd` \"quotes\"\nReturn the answer.";
+  const promptFile = path.join(repo, "workflow prompt.txt");
+  fs.writeFileSync(promptFile, prompt);
+  const launched = run("node", [SCRIPT, "task", "--cwd", repo, "--prompt-file", promptFile, "--background", "--json"], {
     cwd: repo,
     env: buildEnv(binDir)
   });
@@ -938,6 +941,16 @@ test("task --background enqueues a detached worker and exposes per-job status", 
   const launchPayload = JSON.parse(launched.stdout);
   assert.equal(launchPayload.status, "queued");
   assert.match(launchPayload.jobId, /^task-/);
+
+  const interval = run("node", [SCRIPT, "status", launchPayload.jobId, "--wait", "--timeout-ms", "1", "--json"], {
+    cwd: repo,
+    env: buildEnv(binDir)
+  });
+  assert.equal(interval.status, 0, interval.stderr);
+  const pending = JSON.parse(interval.stdout);
+  assert.equal(pending.waitTimedOut, true);
+  assert.ok(["queued", "running"].includes(pending.job.status));
+  assert.equal(pending.job.id, launchPayload.jobId);
 
   const waitedStatus = run(
     "node",
@@ -966,7 +979,10 @@ test("task --background enqueues a detached worker and exposes per-job status", 
 
   assert.equal(resultPayload.job.id, launchPayload.jobId);
   assert.equal(resultPayload.job.status, "completed");
-  assert.match(resultPayload.storedJob.rendered, /Handled the requested task/);
+  assert.equal(resultPayload.storedJob.result.rawOutput, "Handled the requested task.\nTask prompt accepted.");
+  const fakeState = JSON.parse(fs.readFileSync(path.join(binDir, "fake-codex-state.json"), "utf8"));
+  assert.equal(fakeState.lastTurnStart.prompt, prompt);
+  assert.equal(fs.existsSync(path.join(repo, "SHOULD_NOT_EXIST")), false);
 });
 
 test("review rejects focus text because it is native-review only", () => {

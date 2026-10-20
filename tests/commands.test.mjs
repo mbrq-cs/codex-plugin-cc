@@ -147,19 +147,23 @@ test("delegate command absorbs continue semantics", () => {
   assert.match(agent, /Do not call `review`, `adversarial-review`, `status`, `result`, or `cancel`/i);
   assert.match(agent, /If the user asks for a concrete model name such as `gpt-5\.4-mini`, pass it through with `--model`/i);
   assert.match(agent, /Return the stdout of the `codex-companion` command exactly as-is/i);
-  assert.match(agent, /If the Bash call fails or Codex cannot be invoked, return nothing/i);
+  assert.match(agent, /Codex delegation failed/);
+  assert.match(agent, /tools: Bash, Write/);
+  assert.match(agent, /--prompt-file/);
+  assert.doesNotMatch(agent, /return nothing/i);
   assert.match(agent, /gpt-6-prompting/);
   assert.match(agent, /only to tighten the user's request into a better Codex prompt/i);
   assert.match(agent, /Do not use that skill to inspect the repository, reason through the problem yourself, draft a solution, or do any independent work/i);
   assert.match(runtimeSkill, /only job is to invoke `task` once and return that stdout unchanged/i);
   assert.match(runtimeSkill, /Do not call `setup`, `review`, `adversarial-review`, `status`, `result`, or `cancel`/i);
   assert.match(runtimeSkill, /use the `gpt-6-prompting` skill to rewrite the user's request into a tighter Codex prompt/i);
-  assert.match(runtimeSkill, /That prompt drafting is the only Claude-side work allowed/i);
+  assert.match(runtimeSkill, /Prompt drafting and writing the prompt input file with `Write`/);
   assert.match(runtimeSkill, /If the forwarded request includes `--background` or `--wait`, treat that as Claude-side execution control only/i);
   assert.match(runtimeSkill, /Strip it before calling `task`/i);
   assert.match(runtimeSkill, /`--effort`: accepted values are `none`, `minimal`, `low`, `medium`, `high`, `xhigh`/i);
   assert.match(runtimeSkill, /Do not inspect the repository, read files, grep, monitor progress, poll status, fetch results, cancel jobs, summarize output, or do any follow-up work of your own/i);
-  assert.match(runtimeSkill, /If the Bash call fails or Codex cannot be invoked, return nothing/i);
+  assert.match(runtimeSkill, /Codex delegation failed/);
+  assert.doesNotMatch(runtimeSkill, /return nothing/i);
   assert.match(readme, /`codex:codex-delegate` subagent/i);
   assert.match(readme, /--model gpt-5\.4-mini --effort medium/i);
   assert.match(readme, /continue a previous Codex task/i);
@@ -227,4 +231,26 @@ test("setup command can offer Codex install and still points users to codex logi
   assert.match(readme, /offer to install Codex for you/i);
   assert.match(readme, /\/codex:setup --enable-review-gate/);
   assert.match(readme, /\/codex:setup --disable-review-gate/);
+});
+
+test("workflow skill addresses callers and the workflow agent owns the forwarding procedure", () => {
+  const skill = read("skills/codex-in-workflow/SKILL.md");
+  const agent = read("agents/codex-workflow.md");
+  const failureFormats = [
+    '{"forwardError":"<stage, diagnostic, job ID and status if known>"}',
+    "Codex workflow failed: <same details>"
+  ];
+
+  assert.match(agent, /tools: Bash, Write/);
+  assert.doesNotMatch(agent, /^skills:/m);
+  assert.doesNotMatch(skill, /codex-companion\.mjs/);
+  assert.match(agent, /--prompt-file/);
+  assert.match(agent, /status <jobId> --wait --timeout-ms 50000 --json/);
+  assert.match(agent, /storedJob\.result\.rawOutput/);
+  assert.match(agent, /Add `--ephemeral` unless the caller asks for a persistent thread/);
+  assert.match(skill, /ephemeral Codex threads unless you ask for a persistent one/);
+  for (const format of failureFormats) {
+    assert.ok(skill.includes(format), `skill documents ${format}`);
+    assert.ok(agent.includes(format), `agent returns ${format}`);
+  }
 });

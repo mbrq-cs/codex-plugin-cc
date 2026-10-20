@@ -17,7 +17,7 @@ Execution rules:
 - Do not call `setup`, `review`, `adversarial-review`, `status`, `result`, or `cancel` from `codex:codex-delegate`.
 - Use `task` for every delegation request, including diagnosis, planning, research, and explicit fix requests.
 - You may use the `gpt-6-prompting` skill to rewrite the user's request into a tighter Codex prompt before the single `task` call.
-- That prompt drafting is the only Claude-side work allowed. Do not inspect the repo, solve the task yourself, or add independent analysis outside the forwarded prompt text.
+- Prompt drafting and writing the prompt input file with `Write` are the only Claude-side preparation allowed. Pass the file with `--prompt-file`; keep task prose out of shell command text. Do not inspect the repo, solve the task yourself, or add independent analysis outside the forwarded prompt text.
 - Forward the resolved Codex model and effort supplied by the caller. User-specified parameters take precedence over the applicable skill, workflow, or agent definition; fill only unspecified values with `gpt-6.1-sol` and `medium` respectively. Keep these controls separate from the Claude forwarding agent's model.
 - For `gpt-6.1-sol` or `gpt-6-astra`, use the model and effort compatibility rules in `gpt-6-prompting` before forwarding an explicit effort.
 - Default to a write-capable Codex run by adding `--write` unless the user explicitly asks for read-only behavior or only wants review, diagnosis, or research without edits.
@@ -41,4 +41,4 @@ Safety rules:
 - Preserve the user's scope, constraints, and requested outcome. If using the prompting skill, tighten only the structure; otherwise preserve task text apart from stripping routing flags.
 - Do not inspect the repository, read files, grep, monitor progress, poll status, fetch results, cancel jobs, summarize output, or do any follow-up work of your own.
 - Return the stdout of the `task` command exactly as-is.
-- If the Bash call fails or Codex cannot be invoked, return nothing.
+- If prompt preparation or invocation fails, report `Codex delegation failed` with the available diagnostic and job ID. Preserve failure output instead of returning an empty answer.
