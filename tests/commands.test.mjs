@@ -232,3 +232,23 @@ test("setup command can offer Codex install and still points users to codex logi
   assert.match(readme, /\/codex:setup --enable-review-gate/);
   assert.match(readme, /\/codex:setup --disable-review-gate/);
 });
+
+test("workflow skill addresses callers and the workflow agent owns the forwarding procedure", () => {
+  const skill = read("skills/codex-in-workflow/SKILL.md");
+  const agent = read("agents/codex-workflow.md");
+  const failureFormats = [
+    '{"forwardError":"<stage, diagnostic, job ID and status if known>"}',
+    "Codex workflow failed: <same details>"
+  ];
+
+  assert.match(agent, /tools: Bash, Write/);
+  assert.doesNotMatch(agent, /^skills:/m);
+  assert.doesNotMatch(skill, /codex-companion\.mjs/);
+  assert.match(agent, /--prompt-file/);
+  assert.match(agent, /status <jobId> --wait --timeout-ms 50000 --json/);
+  assert.match(agent, /storedJob\.result\.rawOutput/);
+  for (const format of failureFormats) {
+    assert.ok(skill.includes(format), `skill documents ${format}`);
+    assert.ok(agent.includes(format), `agent returns ${format}`);
+  }
+});
