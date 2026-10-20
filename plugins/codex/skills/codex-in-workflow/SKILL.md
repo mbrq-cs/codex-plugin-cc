@@ -24,6 +24,8 @@ The user may select Codex with `{{model}} / {{effort}}` notation, such as `sol /
 
 Pass explicitly versioned model IDs through unchanged. Resolve model and effort independently: the user's choice wins, then the workflow's own configuration, then `sol / medium`. Accepted efforts are `none`, `minimal`, `low`, `medium`, `high`, and `xhigh`, but `gpt-6.1-sol` and `gpt-6-astra` don't support `none` or `minimal`; if the user pairs them, ask for a supported effort before dispatch rather than changing it silently.
 
+## Structured output
+
 For structured output, include the JSON schema the task should return. Add an optional string field `forwardError` to the agent's response schema, with a branch that accepts an object containing only that field, so a failure never has to invent task fields. Check `forwardError` before reading task data and route it through the workflow's existing failure handling. Because failures always arrive this way, an empty result means Codex really returned an empty result.
 
 Codex's answer is not schema-constrained: the companion's `--json` flag formats the runtime's own output, not Codex's reply. The agent asks Codex for JSON and checks its shape; if the workflow needs a hard guarantee, validate the response with the workflow's schema validator.
