@@ -2258,14 +2258,14 @@ test("setup and status honor --cwd when reading shared session runtime", () => {
   assert.equal(payload.sessionRuntime.endpoint, "unix:/tmp/fake-broker.sock");
 });
 
-for (const background of [false, true]) {
-  test(`task --ephemeral ${background ? "background" : "foreground"} keeps results without creating a resumable conversation`, () => {
+for (const [flag, background] of ["--ephemeral", "--oneshot"].flatMap((flag) => [false, true].map((background) => [flag, background]))) {
+  test(`task ${flag} ${background ? "background" : "foreground"} keeps results without creating a resumable conversation`, () => {
     const repo = makeTempDir();
     const binDir = makeTempDir();
     installFakeCodex(binDir);
     initGitRepo(repo);
     const env = { ...buildEnv(binDir), CODEX_COMPANION_SESSION_ID: "ephemeral-test" };
-    const result = run("node", [SCRIPT, "task", "--ephemeral", "--fresh", ...(background ? ["--background"] : []), "--json", "analyze this module"], { cwd: repo, env });
+    const result = run("node", [SCRIPT, "task", flag, "--fresh", ...(background ? ["--background"] : []), "--json", "analyze this module"], { cwd: repo, env });
     assert.equal(result.status, 0, result.stderr);
     const stateDir = resolveStateDir(repo);
     const jobId = JSON.parse(fs.readFileSync(path.join(stateDir, "state.json"), "utf8")).jobs[0].id;
@@ -2324,9 +2324,9 @@ test("ephemeral rejects either resume flag before launching foreground or backgr
   const binDir = makeTempDir();
   installFakeCodex(binDir);
   initGitRepo(repo);
-  for (const resume of ["--resume", "--resume-last"]) {
+  for (const [flag, resume] of ["--ephemeral", "--oneshot"].flatMap((flag) => ["--resume", "--resume-last"].map((resume) => [flag, resume]))) {
     for (const background of [[], ["--background"]]) {
-      const result = run("node", [SCRIPT, "task", "--ephemeral", resume, ...background, "continue"], { cwd: repo, env: buildEnv(binDir) });
+      const result = run("node", [SCRIPT, "task", flag, resume, ...background, "continue"], { cwd: repo, env: buildEnv(binDir) });
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /--ephemeral cannot be combined with --resume or --resume-last/);
     }

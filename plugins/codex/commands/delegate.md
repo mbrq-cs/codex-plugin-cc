@@ -1,6 +1,6 @@
 ---
 description: Delegate implementation, investigation, planning, research, or follow-up work to Codex
-argument-hint: "[--background|--wait] [--resume|--fresh] [--ephemeral] [model / effort] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [task Codex should complete or continue]"
+argument-hint: "[--background|--wait] [--resume|--fresh] [--ephemeral|--oneshot] [model / effort] [--model <model>] [--effort <none|minimal|low|medium|high|xhigh>] [task Codex should complete or continue]"
 allowed-tools: Bash(node:*), AskUserQuestion, Agent
 ---
 
@@ -29,6 +29,8 @@ Interpret `{{model}} / {{effort}}` (for example, `sol / medium`) as the model an
 - Example: `/codex:delegate astra / high investigate the regression` forwards `--model gpt-6-astra --effort high` with task text `investigate the regression`.
 
 Execution mode:
+
+- `--oneshot` is an exact alias for `--ephemeral`. Normalize it to `--ephemeral` before applying the execution and resume rules below; remove it from task text.
 
 - If the request includes `--background`, run the `codex:codex-delegate` subagent in the background.
 - If the request includes `--wait`, run the `codex:codex-delegate` subagent in the foreground.

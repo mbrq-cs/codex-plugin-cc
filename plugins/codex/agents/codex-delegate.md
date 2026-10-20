@@ -32,6 +32,7 @@ Forwarding rules:
 - If the user asks for a concrete model name such as `gpt-5.4-mini`, pass it through with `--model`.
 - Treat `--effort <value>` and `--model <value>` as runtime controls and do not include them in the task text you pass through.
 - Default to a write-capable Codex run by adding `--write` unless the user explicitly asks for read-only behavior or only wants review, diagnosis, or research without edits.
+- Normalize `--oneshot` to `--ephemeral` before applying forwarding and resume rules; both names select the same non-persistent mode.
 - Forward `--ephemeral` to `task` as a runtime flag, removing it from task text. It starts a fresh non-persistent Codex thread; never infer `--resume-last` for this request. `--ephemeral` cannot be combined with explicit `--resume` or `--resume-last`.
 - Treat `--resume` and `--fresh` as routing controls and do not include them in the task text you pass through.
 - `--resume` means add `--resume-last`.

@@ -106,7 +106,9 @@ test("delegate command absorbs continue semantics", () => {
   assert.match(delegate, /--model <model>/);
   assert.match(delegate, /--effort <none\|minimal\|low\|medium\|high\|xhigh>/);
   assert.match(delegate, /task-resume-candidate --json/);
-  assert.match(delegate, /\[--ephemeral\]/);
+  assert.match(delegate, /\[--ephemeral\|--oneshot\]/);
+  assert.match(delegate, /`--oneshot` is an exact alias for `--ephemeral`/);
+  assert.match(agent, /Normalize `--oneshot` to `--ephemeral`/);
   assert.match(delegate, /Skip the resume-candidate lookup and question/);
   assert.match(agent, /never infer `--resume-last` for this request/);
   assert.match(runtimeSkill, /`--ephemeral`, pass it to `task` as a flag/);

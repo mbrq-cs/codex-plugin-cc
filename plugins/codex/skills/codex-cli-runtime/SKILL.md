@@ -23,6 +23,7 @@ Execution rules:
 - Default to a write-capable Codex run by adding `--write` unless the user explicitly asks for read-only behavior or only wants review, diagnosis, or research without edits.
 
 Command selection:
+- `--oneshot` aliases `--ephemeral`; normalize it before applying the rules below. The runtime accepts either spelling.
 - Use exactly one `task` invocation per delegation handoff.
 - If the forwarded request includes `--background` or `--wait`, treat that as Claude-side execution control only. Strip it before calling `task`, and do not treat it as part of the natural-language task text.
 - If the forwarded request includes `--model`, pass the requested model through to `task` unchanged.
